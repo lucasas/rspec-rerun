@@ -1,8 +1,8 @@
 require 'rspec/core/rake_task'
 
 desc "Run RSpec examples."
-RSpec::Core::RakeTask.new("rspec-rerun:run") do |t|
-  t.pattern = "spec/**/*_spec.rb"
+RSpec::Core::RakeTask.new("rspec-rerun:run") do |t, args|
+  t.pattern = args[:file_list]
   t.rspec_opts = [
     "--require", File.join(File.dirname(__FILE__), '../rspec-rerun'),
     "--format", "RSpec::Rerun::Formatters::FailuresFormatter",
@@ -24,7 +24,21 @@ task "rspec-rerun:spec" do
   FileUtils.rm_f RSpec::Rerun::Formatters::FailuresFormatter::FILENAME
 
   begin
-    Rake::Task["rspec-rerun:run"].execute
+    Rake::Task["rspec-rerun:run"].execute file_list: FileList['spec/**/*_spec.rb'].exclude("spec/features/**/*_spec.rb")
+  rescue
+    failed_count = File.read(RSpec::Rerun::Formatters::FailuresFormatter::FILENAME).split(/\n+/).count
+    puts "[#{Time.now}] Failed, rerunning #{failed_count} failure(s) ..."
+
+    Rake::Task["rspec-rerun:rerun"].execute
+  end
+end
+
+desc "Run RSpec Features code examples."
+task "rspec-rerun:features" do
+  FileUtils.rm_f RSpec::Rerun::Formatters::FailuresFormatter::FILENAME
+
+  begin
+    Rake::Task["rspec-rerun:run"].execute file_list: FileList['spec/features/**/*_spec.rb']
   rescue
     failed_count = File.read(RSpec::Rerun::Formatters::FailuresFormatter::FILENAME).split(/\n+/).count
     puts "[#{Time.now}] Failed, rerunning #{failed_count} failure(s) ..."
